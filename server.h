@@ -4,13 +4,12 @@
 #include <QObject>
 #include <QVector>
 #include <QMap>
-#include <QMutex>
+#include <QList>
 #include "robots.h"
 
 class QTcpServer;
 class QTcpSocket;
 class QThread;
-class ComPort;
 
 /*
  * PROTOCOL
@@ -34,24 +33,23 @@ protected:
     void timerEvent(QTimerEvent*);
 
 private:
-    QTcpServer *server;
-    QTcpSocket *sockets[2];
-    Robots *robots;
-    QThread *comThread;
-    bool started;
-    bool connected[2];
-    unsigned char wheels1[2];
-    unsigned char wheels2[2];
-    PointVector points;
-    QMap <uint8_t, uint8_t> data;
+    QTcpServer *m_server;
+    QList <QTcpSocket *> m_sockets;
+    Robots *m_robots;
+    QThread *m_comThread;
+    bool m_started;
+    unsigned char m_wheels1[2];
+    unsigned char m_wheels2[2];
+    PointVector m_points;
+    QMap <uint8_t, uint8_t> m_data;
+
+    static const int MAX_CONNECTIONS = 10;
 
 private slots:
     void newConnection();
-    void readyRead1();
-    void readyRead2();
-    void disconnected1();
-    void disconnected2();
-    void getPoints(PointVector p) {points = p;}
+    void readyRead();
+    void disconnected();
+    void getPoints(PointVector points) {m_points = points;}
 
 signals:
 

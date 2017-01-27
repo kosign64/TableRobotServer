@@ -7,55 +7,41 @@
 #include <stdint-gcc.h>
 
 Server::Server(QObject *parent) : QObject(parent),
-    started(false),
-    connected{false, false}
+    m_started(false)
 {
     qRegisterMetaType<PointVector>("PointVector");
-    server = new QTcpServer(this);
-    comThread = new QThread;
-    robots = new Robots;
-    robots->moveToThread(comThread);
-    connect(server, &QTcpServer::newConnection, this, &Server::newConnection);
-    connect(robots, &Robots::sendPoints, this, &Server::getPoints);
-    connect(comThread, SIGNAL(started()), robots, SLOT(process()));
-    comThread->start();
+    m_server = new QTcpServer(this);
+    m_comThread = new QThread;
+    m_robots = new Robots;
+    m_robots->moveToThread(m_comThread);
+    connect(m_server, &QTcpServer::newConnection, this, &Server::newConnection);
+    connect(m_robots, &Robots::sendPoints, this, &Server::getPoints);
+    connect(m_comThread, &QThread::started, m_robots,
+            &Robots::process);
+    m_comThread->start();
     startTimer(1000 / 100);
 }
 
 Server::~Server()
 {
-    robots->stopProcess();
-    comThread->quit();
-    comThread->wait(1000);
+    m_robots->stopProcess();
+    m_comThread->quit();
+    m_comThread->wait(1000);
 }
 
 void Server::newConnection()
 {
-    if(connected[0] == false)
+    if(m_sockets.size() < MAX_CONNECTIONS)
     {
-        sockets[0] = server->nextPendingConnection();
-        connect(sockets[0], &QTcpSocket::readyRead, this, &Server::readyRead1);
-        connect(sockets[0], &QTcpSocket::disconnected, this,
-                &Server::disconnected1);
-        connect(sockets[0], &QTcpSocket::disconnected, sockets[0],
-                &QTcpSocket::deleteLater);
-        connected[0] = true;
-        qDebug() << "New connection to socket #0 from" << sockets[0]->peerAddress().toString();
-    }
-    else if(connected[1] == false)
-    {
-        sockets[1] = server->nextPendingConnection();
-        connect(sockets[1], &QTcpSocket::readyRead, this, &Server::readyRead2);
-        connect(sockets[1], &QTcpSocket::disconnected, this,
-                &Server::disconnected2);
-        connect(sockets[1], &QTcpSocket::disconnected, sockets[1],
-                &QTcpSocket::deleteLater);
-        connected[1] = true;
-        qDebug() << "New connection to socket #1 from" << sockets[1]->peerAddress().toString();
+        QTcpSocket *socket = m_server->nextPendingConnection();
+        connect(socket, &QTcpSocket::readyRead, this, &Server::readyRead);
+        connect(socket, &QTcpSocket::disconnected, this,
+                &Server::disconnected);
+        m_sockets << socket;
     }
     else
     {
-        QTcpSocket *unknownSocket = server->nextPendingConnection();
+        QTcpSocket *unknownSocket = m_server->nextPendingConnection();
         unknownSocket->disconnectFromHost();
         delete unknownSocket;
         qDebug() << "Something else trying to connect";
@@ -64,11 +50,11 @@ void Server::newConnection()
 
 bool Server::startServer()
 {
-    if(!started)
+    if(!m_started)
     {
-        if(server->listen(QHostAddress::Any, 3336))
+        if(m_server->listen(QHostAddress::Any, 3336))
         {
-            started = true;
+            m_started = true;
             qDebug() << "Server started";
             return true;
         }
@@ -81,53 +67,39 @@ bool Server::startServer()
     return true;
 }
 
-void Server::disconnected1()
+void Server::disconnected()
 {
-    qDebug() << "Socket #0 disconnected" << sockets[0]->peerAddress().toString();
-    connected[0] = false;
-    sockets[0]->readAll();
-}
-
-void Server::disconnected2()
-{
-    qDebug() << "Socket #1 disconnected" << sockets[1]->peerAddress().toString();
-    connected[1] = false;
-    sockets[1]->readAll();
-}
-
-void Server::readyRead1()
-{
-    if(sockets[0]->bytesAvailable() >= sizeof(RobotData))
+    QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
+    qDebug() << "Socket disconnected" << socket->peerAddress().toString();
+    if(socket)
     {
-        RobotData newData;
-        sockets[0]->read((char*)&newData, sizeof(RobotData));
-        data[newData.number] = newData.cByte;
-        uint16_t size = points.size();
-        sockets[0]->write((char*)(&size), sizeof(uint16_t));
-        sockets[0]->write((char*)points.data(), sizeof(Point2D) * size);
-        sockets[0]->flush();
+        socket->readAll();
+        m_sockets.removeAll(socket);
+        socket->deleteLater();
     }
 }
 
-void Server::readyRead2()
+void Server::readyRead()
 {
-    if(sockets[1]->bytesAvailable() >= sizeof(RobotData))
+    QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
+    if((quint64)socket->bytesAvailable() >= sizeof(RobotData))
     {
         RobotData newData;
-        sockets[1]->read((char*)&newData, sizeof(RobotData));
-        data[newData.number] = newData.cByte;
-        uint16_t size = points.size();
-        sockets[1]->write((char*)(&size), sizeof(uint16_t));
-        sockets[1]->write((char*)points.data(), sizeof(Point2D) * points.size());
-        sockets[1]->flush();
+        socket->read((char*)&newData, sizeof(RobotData));
+        m_data[newData.number] = newData.cByte;
+        uint16_t size = m_points.size();
+        socket->write((char*)(&size), sizeof(uint16_t));
+        socket->write((char*)m_points.data(), sizeof(Point2D) *
+                      m_points.size());
+        socket->flush();
     }
 }
 
 void Server::timerEvent(QTimerEvent *)
 {
-    if(!data.isEmpty())
+    if(!m_data.isEmpty())
     {
-        robots->sendWheels(data);
-        data.clear();
+        m_robots->sendWheels(m_data);
+        m_data.clear();
     }
 }

@@ -4,9 +4,9 @@
 #include <QObject>
 #include <QVector>
 #include <QMap>
+#include <comport.h>
 #include <stdint-gcc.h>
 
-class ComPort;
 
 struct Point2D
 {
@@ -28,15 +28,14 @@ class Robots : public QObject
 public:
     explicit Robots(QObject *parent = 0);
     ~Robots();
-    void sendWheels(unsigned char wheels1[], unsigned char wheels2[]);
     void sendWheels(QVector<RobotData> data);
     void sendWheels(QMap <uint8_t, uint8_t> data);
-    void stopProcess() {stop = true;}
+    void stopProcess() {m_stop = true;}
 
 private:
-    ComPort *port;
-    bool stop;
-    PointVector points;
+    ComPort m_port;
+    bool m_stop;
+    PointVector m_points;
 
 signals:
     void sendPoints(PointVector p);
