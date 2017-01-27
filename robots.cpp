@@ -11,7 +11,7 @@ Robots::Robots(QObject *parent) : QObject(parent),
     stop(false)
 {
     port = new ComPort;
-    if(port->openPort(3) > 0)
+    if(port->openPort("/dev/ttyUSB0") > 0)
     {
         qDebug() << "Port opened";
     }
