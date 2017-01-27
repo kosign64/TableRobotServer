@@ -2,11 +2,6 @@
 #include "comport.h"
 #include <QDebug>
 
-bool dataLessThan(const RobotData &d1, const RobotData &d2)
-{
-    return d1.number < d2.number;
-}
-
 Robots::Robots(QObject *parent) : QObject(parent),
     stop(false)
 {
@@ -35,43 +30,36 @@ void Robots::process()
     while(!stop)
     {
         byte = port->readByte(status);
-        if(status > 0)
+        if(status < 0) continue;
+        if(byte == 255)
         {
-            if(byte == 255)
+            byte = port->readByte(status);
+            if(status < 0) continue;
+            dotNumber = byte;
+            points.resize(dotNumber);
+            for(int i = 0; i < points.size(); ++i)
             {
                 byte = port->readByte(status);
-                if(status > 0)
-                {
-                    dotNumber = byte;
-                    points.resize(dotNumber);
-                    for(int i = 0; i < points.size(); ++i)
-                    {
-                        byte = port->readByte(status);
-                        if(status > 0)
-                        {
-                            int x = (int)byte * 100;
-                            byte = port->readByte(status);
-                            x += byte;
-                            byte = port->readByte(status);
-                            int y = (int)byte * 100;
-                            byte = port->readByte(status);
-                            y += byte;
-                            Point2D point;
-                            point.x = x;
-                            point.y = y;
-                            points[i] = point;
-                        }
-                    }
-                    emit sendPoints(points);
-                }
+                if(status < 0) continue;
+                int x = (int)byte * 100;
+                byte = port->readByte(status);
+                x += byte;
+                byte = port->readByte(status);
+                int y = (int)byte * 100;
+                byte = port->readByte(status);
+                y += byte;
+                Point2D point;
+                point.x = x;
+                point.y = y;
+                points[i] = point;
             }
+            emit sendPoints(points);
         }
     }
 }
 
 void Robots::sendWheels(unsigned char wheels1[], unsigned char wheels2[])
 {
-    //*port << 0xFF << wheels1[0] << wheels1[2] << wheels2[0] << wheels2[1];
     unsigned char cByte = 0;
     cByte |= (1 << 6);
     switch(wheels1[0])
@@ -98,7 +86,8 @@ void Robots::sendWheels(unsigned char wheels1[], unsigned char wheels2[])
 
 void Robots::sendWheels(QVector <RobotData> data)
 {
-    qSort(data.begin(), data.end(), dataLessThan);
+    qSort(data.begin(), data.end(), [](const RobotData &d1,
+          const RobotData &d2) {return d1.number < d2.number;});
     qDebug() << "0xFF" << data.size();
     *port << 0xFF;
     int j = 0;
@@ -121,7 +110,6 @@ void Robots::sendWheels(QVector <RobotData> data)
 
 void Robots::sendWheels(QMap <uint8_t, uint8_t> data)
 {
-    //qDebug() << "0xFF" << data.size();
     *port << 0xFF;
     for(int i = 0; i < data.lastKey(); ++i)
     {
