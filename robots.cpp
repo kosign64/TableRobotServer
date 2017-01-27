@@ -22,7 +22,8 @@ Robots::~Robots()
 
 void Robots::process()
 {
-    int byte, dotNumber;
+    unsigned char byte;
+    unsigned char dotNumber;
     ComStatus status;
     m_points.clear();
     qDebug() << "Thread started";

@@ -38,8 +38,6 @@ private:
     Robots *m_robots;
     QThread *m_comThread;
     bool m_started;
-    unsigned char m_wheels1[2];
-    unsigned char m_wheels2[2];
     PointVector m_points;
     QMap <uint8_t, uint8_t> m_data;
 
