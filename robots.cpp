@@ -28,7 +28,8 @@ Robots::~Robots()
 
 void Robots::process()
 {
-    int byte, status, dotNumber;
+    int byte, dotNumber;
+    ComStatus status;
     points.clear();
     qDebug() << "Thread started";
     while(!stop)

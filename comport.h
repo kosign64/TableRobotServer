@@ -5,19 +5,29 @@
 #include <windows.h>
 #endif
 
-#ifdef linux
+#ifdef __linux__
 #include <termios.h>
 #endif
 
-enum Com
+#include <vector>
+#include <string>
+
+using namespace std;
+
+enum ComStatus
 {
     PORT_OPEN_OK = 1,
-    PORT_IS_ALREADY_OPENED = -1,
-    WRONG_PORT_NUMBER = -2,
-    PORT_OPEN_ERROR = -3,
+    PORT_OPEN_ERROR = -1,
     BYTE_READ_OK = 2,
-    BYTE_READ_TIMEOUT = -4,
-    PORT_CLOSED = -5
+    BYTE_READ_TIMEOUT = -2,
+    PORT_CLOSED = -3
+};
+
+enum ComSpeed
+{
+    COM4800,
+    COM9600,
+    COM115200
 };
 
 class ComPort
@@ -25,16 +35,18 @@ class ComPort
 public:
     ComPort();
     ~ComPort();
-    int openPort(int number);
+    ComStatus openPort(int number, ComSpeed speed = COM115200);
+    ComStatus openPort(string name, ComSpeed speed = COM115200);
     void closePort();
     bool isOpened() {return opened;}
     void sendByte(unsigned char byte);
-    unsigned char readByte(int &status);
-    ComPort &operator << (unsigned char number);
-    ComPort &operator << (unsigned char *string);
+    unsigned char readByte(ComStatus &status);
+    ComPort &operator << (unsigned char byte);
+    ComPort &operator << (const char *string);
+    ComPort &operator >> (unsigned char &byte);
+    static vector<string> getAvailablePorts();
 
 private:
-    int portNumber;
     bool opened;
 #if defined(_WIN32) || defined(WIN32)
     HANDLE port;
@@ -45,7 +57,7 @@ private:
     DWORD bc;
 #endif
 
-#ifdef linux
+#ifdef __linux__
     termios portOptions;
     int port;
 #endif
