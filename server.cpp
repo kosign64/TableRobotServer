@@ -14,7 +14,8 @@ Server::Server(QObject *parent) : QObject(parent),
     m_comThread = new QThread;
     m_robots = new Robots;
     m_robots->moveToThread(m_comThread);
-    connect(m_server, &QTcpServer::newConnection, this, &Server::newConnection);
+    connect(m_server, &QTcpServer::newConnection, this,
+            &Server::newConnection);
     connect(m_robots, &Robots::sendPoints, this, &Server::getPoints);
     connect(m_comThread, &QThread::started, m_robots,
             &Robots::process);
@@ -82,11 +83,16 @@ void Server::disconnected()
 void Server::readyRead()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
-    if((quint64)socket->bytesAvailable() >= sizeof(RobotData))
+    quint64 bytesAvailable = socket->bytesAvailable();
+    if(bytesAvailable >= sizeof(RobotData))
     {
         RobotData newData;
-        socket->read((char*)&newData, sizeof(RobotData));
-        m_data[newData.number] = newData.cByte;
+        int robotsNumber = bytesAvailable / sizeof(RobotData);
+        for(int i = 0; i < robotsNumber; ++i)
+        {
+            socket->read((char*)&newData, sizeof(RobotData));
+            m_data[newData.number] = newData.cByte;
+        }
         uint16_t size = m_points.size();
         socket->write((char*)(&size), sizeof(uint16_t));
         socket->write((char*)m_points.data(), sizeof(Point2D) *

@@ -14,9 +14,13 @@ class QThread;
 /*
  * PROTOCOL
  *
- * 2 bytes size
- * Array of dots 4 bytes
+ * Server sends:
+ * 2 bytes (uint16_t) size (number of dots)
+ * Array of dots, each dot is 4 bytes (2 * uint16_t)
  *
+ * Server receives:
+ * 1 byte robot number (uint8_t)
+ * 1 byte control byte (uint8_t)
  */
 
 typedef QVector<Point2D> PointVector;
