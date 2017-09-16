@@ -37,13 +37,13 @@ protected:
     void timerEvent(QTimerEvent*);
 
 private:
-    QTcpServer *m_server;
-    QList <QTcpSocket *> m_sockets;
-    Robots *m_robots;
-    QThread *m_comThread;
-    bool m_started;
-    PointVector m_points;
-    QMap <uint8_t, uint8_t> m_data;
+    QTcpServer *server_;
+    QList <QTcpSocket *> sockets_;
+    Robots *robots_;
+    QThread *comThread_;
+    bool started_;
+    PointVector points_;
+    QMap <uint8_t, uint8_t> data_;
 
     static const int MAX_CONNECTIONS = 10;
 
@@ -51,7 +51,7 @@ private slots:
     void newConnection();
     void readyRead();
     void disconnected();
-    void getPoints(PointVector points) {m_points = points;}
+    void getPoints(PointVector points) {points_ = points;}
 
 signals:
 

@@ -30,12 +30,12 @@ public:
     ~Robots();
     void sendWheels(QVector<RobotData> data);
     void sendWheels(QMap <uint8_t, uint8_t> data);
-    void stopProcess() {m_stop = true;}
+    void stopProcess() {stop_ = true;}
 
 private:
-    ComPort m_port;
-    bool m_stop;
-    PointVector m_points;
+    ComPort port_;
+    bool stop_;
+    PointVector points_;
 
 signals:
     void sendPoints(PointVector p);

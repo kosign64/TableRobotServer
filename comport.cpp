@@ -6,17 +6,17 @@
 #include <unistd.h>
 #endif
 
-ComPort::ComPort() : opened(false)
+ComPort::ComPort() : opened_(false)
 {
 #if defined(_WIN32) || defined(WIN32)
-    dcb=(DCB*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(DCB));
-    dcb->DCBlength = sizeof(DCB);
-    BuildCommDCB(TEXT("parity=N data=8 stop=1"), dcb);
-    ct.ReadIntervalTimeout = 0;
-    ct.ReadTotalTimeoutMultiplier = 0;
-    ct.ReadTotalTimeoutConstant = 100;
-    ct.WriteTotalTimeoutMultiplier = ct.WriteTotalTimeoutConstant = 0;
-    dcb->BaudRate = CBR_9600;
+    dcb_=(DCB*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(DCB));
+    dcb_->DCBlength = sizeof(DCB);
+    BuildCommDCB(TEXT("parity=N data=8 stop=1"), dcb_);
+    ct_.ReadIntervalTimeout = 0;
+    ct_.ReadTotalTimeoutMultiplier = 0;
+    ct_.ReadTotalTimeoutConstant = 100;
+    ct_.WriteTotalTimeoutMultiplier = ct_.WriteTotalTimeoutConstant = 0;
+    dcb_->BaudRate = CBR_9600;
 #endif
 }
 
@@ -47,49 +47,49 @@ ComStatus ComPort::openPort(string name, ComSpeed speed)
     switch(speed)
     {
     case COM4800:
-        dcb->BaudRate = CBR_4800;
+        dcb_->BaudRate = CBR_4800;
         break;
     case COM9600:
-        dcb->BaudRate = CBR_9600;
+        dcb_->BaudRate = CBR_9600;
         break;
     case COM115200:
-        dcb->BaudRate = CBR_115200;
+        dcb_->BaudRate = CBR_115200;
         break;
     default:
-        dcb->BaudRate = CBR_115200;
+        dcb_->BaudRate = CBR_115200;
     }
 
     string portName = "\\\\.\\";
     portName += name;
 
-    port = CreateFileA(portName.c_str(), GENERIC_READ | GENERIC_WRITE, 0,
+    port_ = CreateFileA(portName.c_str(), GENERIC_READ | GENERIC_WRITE, 0,
                        NULL, OPEN_EXISTING, 0, NULL);
 
-    if(port == INVALID_HANDLE_VALUE)
+    if(port_ == INVALID_HANDLE_VALUE)
     {
         return PORT_OPEN_ERROR;
     }
 
-    SetCommState(port, dcb);
-    SetCommTimeouts(port, &ct);
-    HeapFree(GetProcessHeap(), 0, dcb);
-    PurgeComm(port, PURGE_TXCLEAR | PURGE_RXCLEAR);
-    opened = true;
+    SetCommState(port_, dcb_);
+    SetCommTimeouts(port_, &ct_);
+    HeapFree(GetProcessHeap(), 0, dcb_);
+    PurgeComm(port_, PURGE_TXCLEAR | PURGE_RXCLEAR);
+    opened_ = true;
 
     return PORT_OPEN_OK;
 #endif
 
 #ifdef __linux__
-    port = open(name.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+    port_ = open(name.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
 
-    if(port == -1)
+    if(port_ == -1)
     {
         return PORT_OPEN_ERROR;
     }
 
-    tcgetattr(port, &portOptions);
+    tcgetattr(port_, &portOptions_);
 
-    cfmakeraw(&portOptions);
+    cfmakeraw(&portOptions_);
 
     speed_t s;
     switch(speed)
@@ -106,29 +106,29 @@ ComStatus ComPort::openPort(string name, ComSpeed speed)
     default:
         s = B115200;
     }
-    cfsetispeed(&portOptions, s);
-    cfsetospeed(&portOptions, s);
+    cfsetispeed(&portOptions_, s);
+    cfsetospeed(&portOptions_, s);
 
-    portOptions.c_cflag &= ~PARENB;
-    portOptions.c_cflag &= ~CSTOPB;
-    portOptions.c_cflag &= ~CSIZE;
-    portOptions.c_cflag |= CS8;
+    portOptions_.c_cflag &= ~PARENB;
+    portOptions_.c_cflag &= ~CSTOPB;
+    portOptions_.c_cflag &= ~CSIZE;
+    portOptions_.c_cflag |= CS8;
 
-    portOptions.c_cflag |= (CLOCAL | CREAD);
+    portOptions_.c_cflag |= (CLOCAL | CREAD);
 
-    portOptions.c_iflag &= ~(IGNBRK | BRKINT | ICRNL |
+    portOptions_.c_iflag &= ~(IGNBRK | BRKINT | ICRNL |
                              INLCR | PARMRK | INPCK | ISTRIP | IXON);
 
-    portOptions.c_oflag = 0;
+    portOptions_.c_oflag = 0;
 
-    portOptions.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+    portOptions_.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
 
-    portOptions.c_cc[VMIN] = 0;
-    portOptions.c_cc[VTIME] = 1;
+    portOptions_.c_cc[VMIN] = 0;
+    portOptions_.c_cc[VTIME] = 1;
 
-    tcsetattr(port, TCSANOW, &portOptions);
-    fcntl(port, F_SETFL, 0);
-    opened = true;
+    tcsetattr(port_, TCSANOW, &portOptions_);
+    fcntl(port_, F_SETFL, 0);
+    opened_ = true;
 
     return PORT_OPEN_OK;
 #endif
@@ -136,16 +136,16 @@ ComStatus ComPort::openPort(string name, ComSpeed speed)
 
 void ComPort::closePort()
 {
-    if(opened)
+    if(opened_)
     {
 #if defined(_WIN32) || defined(WIN32)
-        CloseHandle(port);
+        CloseHandle(port_);
 #endif
 
 #ifdef __linux__
-        close(port);
+        close(port_);
 #endif
-        opened = false;
+        opened_ = false;
     }
 }
 
@@ -153,16 +153,16 @@ unsigned char ComPort::readByte(ComStatus &status)
 {
 #if defined(_WIN32) || defined(WIN32)
     unsigned char byte;
-    if(opened)
+    if(opened_)
     {
-        ReadFile(port, &byte, 1, &bc, NULL);
+        ReadFile(port_, &byte, 1, &bc_, NULL);
     }
     else
     {
         status = PORT_CLOSED;
         return byte;
     }
-    if(!bc)
+    if(!bc_)
     {
         status = BYTE_READ_TIMEOUT;
     }
@@ -177,9 +177,9 @@ unsigned char ComPort::readByte(ComStatus &status)
 #ifdef __linux__
     unsigned char byte;
     int count = 0;
-    if(opened)
+    if(opened_)
     {
-        count = read(port, &byte, 1);
+        count = read(port_, &byte, 1);
     }
     else
     {
@@ -206,23 +206,23 @@ unsigned char ComPort::readByte(ComStatus &status)
 void ComPort::sendByte(unsigned char byte)
 {
 #if defined(_WIN32) || defined(WIN32)
-    WriteFile(port, &byte, 1, &bc, NULL);
+    WriteFile(port_, &byte, 1, &bc_, NULL);
 #endif
 
 #ifdef __linux__
-    write(port, &byte, 1);
+    write(port_, &byte, 1);
 #endif
 }
 
 ComPort &ComPort::operator <<(unsigned char byte)
 {
 #if defined(_WIN32) || defined(WIN32)
-    WriteFile(port, &byte, 1, &bc, NULL);
+    WriteFile(port_, &byte, 1, &bc_, NULL);
     return *this;
 #endif
 
 #ifdef __linux__
-    write(port, &byte, 1);
+    write(port_, &byte, 1);
     return *this;
 #endif
 }
@@ -232,7 +232,7 @@ ComPort &ComPort::operator <<(const char *string)
 #if defined(_WIN32) || defined(WIN32)
     while(*string)
     {
-        WriteFile(port, string, 1, &bc, NULL);
+        WriteFile(port_, string, 1, &bc_, NULL);
         ++string;
     }
     return *this;
@@ -241,7 +241,7 @@ ComPort &ComPort::operator <<(const char *string)
 #ifdef __linux__
     while(*string)
     {
-        write(port, string, 1);
+        write(port_, string, 1);
         ++string;
     }
     return *this;
@@ -250,7 +250,7 @@ ComPort &ComPort::operator <<(const char *string)
 
 ComPort &ComPort::operator >> (unsigned char &byte)
 {
-    if(opened)
+    if(opened_)
     {
         ComStatus status = BYTE_READ_TIMEOUT;
         while(status != BYTE_READ_OK)

@@ -38,7 +38,7 @@ public:
     ComStatus openPort(int number, ComSpeed speed = COM115200);
     ComStatus openPort(string name, ComSpeed speed = COM115200);
     void closePort();
-    bool isOpened() {return opened;}
+    bool isOpened() {return opened_;}
     void sendByte(unsigned char byte);
     unsigned char readByte(ComStatus &status);
     ComPort &operator << (unsigned char byte);
@@ -47,19 +47,19 @@ public:
     static vector<string> getAvailablePorts();
 
 private:
-    bool opened;
+    bool opened_;
 #if defined(_WIN32) || defined(WIN32)
-    HANDLE port;
-    COMMTIMEOUTS ct;
-    DCB *dcb;
-    COMMCONFIG *cf;
-    DWORD sz;
-    DWORD bc;
+    HANDLE port_;
+    COMMTIMEOUTS ct_;
+    DCB *dcb_;
+    COMMCONFIG *cf_;
+    DWORD sz_;
+    DWORD bc_;
 #endif
 
 #ifdef __linux__
-    termios portOptions;
-    int port;
+    termios portOptions_;
+    int port_;
 #endif
 };
 
