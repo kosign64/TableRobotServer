@@ -7,6 +7,26 @@
 #include <comport.h>
 #include <stdint-gcc.h>
 
+/*
+ * PROTOCOL
+ *
+ * --Server sends:--
+ * 0xFF
+ * robot1 control byte
+ * robot2 control byte
+ * ...
+ * 0xFE
+ *
+ * --MCU sends:--
+ * 0xFF
+ * number of found points (uint8_t)
+ * point1 x / 100 (uint8_t)
+ * point1 x % 100 (uint8_t)
+ * point1 y / 100 (uint8_t)
+ * point1 y % 100 (uint8_t)
+ * ...
+ */
+
 #define IGNORE_NUMBER 255
 
 struct Point2D
