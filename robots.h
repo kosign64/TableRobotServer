@@ -7,6 +7,7 @@
 #include <comport.h>
 #include <stdint-gcc.h>
 
+#define IGNORE_NUMBER 255
 
 struct Point2D
 {

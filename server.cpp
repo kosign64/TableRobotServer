@@ -91,7 +91,10 @@ void Server::readyRead()
         for(int i = 0; i < robotsNumber; ++i)
         {
             socket->read((char*)&newData, sizeof(RobotData));
-            data_[newData.number] = newData.cByte;
+            if(newData.number != IGNORE_NUMBER)
+            {
+                data_[newData.number] = newData.cByte;
+            }
         }
         uint16_t size = points_.size();
         socket->write((char*)(&size), sizeof(uint16_t));
